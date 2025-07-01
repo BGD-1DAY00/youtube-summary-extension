@@ -80,7 +80,12 @@ function handleButtonClick(event: Event) {
 // Create and style a button
 function createButton(className: string): HTMLButtonElement {
   const button = document.createElement('button');
-  button.textContent = 'AI';
+  button.innerHTML = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right: 6px; vertical-align: middle;">
+      <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" fill="currentColor"/>
+    </svg>
+    <span style="vertical-align: middle;">Sum</span>
+  `;
   button.className = className;
   button.type = 'button';
   button.addEventListener('click', handleButtonClick);
@@ -91,8 +96,8 @@ function createButton(className: string): HTMLButtonElement {
     right: 0 !important;
     background: rgba(0, 123, 255, 0.9) !important;
     color: white !important;
-    padding: 6px 12px !important;
-    border-radius: 16px !important;
+    padding: 8px 14px !important;
+    border-radius: 18px !important;
     font-weight: bold !important;
     font-size: 12px !important;
     z-index: 1001 !important;
@@ -104,7 +109,10 @@ function createButton(className: string): HTMLButtonElement {
     box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
     cursor: pointer !important;
     transition: background-color 0.2s ease !important;
-    min-width: 40px !important;
+    min-width: 60px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   `;
   
   // Add hover effects
