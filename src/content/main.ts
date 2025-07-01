@@ -70,11 +70,25 @@ function handleButtonClick(event: Event) {
           <p>Checking authentication...</p>
         </div>
         <div class="auth-required" id="auth-required" style="display: none;">
-          <div class="auth-icon">🔐</div>
-          <h3>API Key Required</h3>
-          <p>Please enter your API key to continue:</p>
-          <input type="password" id="api-key-input" placeholder="sk-..." />
-          <button id="save-api-key" class="primary-button">Save API Key</button>
+          <div class="auth-icon">🔑</div>
+          <h3>API Key Not Available</h3>
+          <p>Sorry, the API key is not available. To use this extension, please follow these steps:</p>
+          <div class="instructions">
+            <ol>
+              <li>Click on the <strong>Extensions</strong> tab in your browser</li>
+              <li>Find and click on the <strong>YouTube AI Summarizer</strong> extension</li>
+              <li>View the popup which will allow you to provide your API key</li>
+            </ol>
+            <div class="providers">
+              <p><strong>Supported providers:</strong></p>
+              <div class="provider-list">
+                <span class="provider">🤖 Gemini</span>
+                <span class="provider">🧠 OpenAI</span>
+                <span class="provider">⚡ Claude</span>
+              </div>
+            </div>
+          </div>
+          <button id="refresh-auth" class="primary-button">Check Again</button>
         </div>
         <div class="main-content" id="main-content" style="display: none;">
           <div class="video-info">
@@ -238,6 +252,56 @@ function handleButtonClick(event: Event) {
         margin-bottom: 24px !important;
         backdrop-filter: blur(10px) !important;
       }
+      
+      .youtube-ai-panel .instructions {
+        text-align: left !important;
+        background: rgba(255,255,255,0.05) !important;
+        border-radius: 8px !important;
+        padding: 20px !important;
+        margin: 20px 0 !important;
+      }
+      
+      .youtube-ai-panel .instructions ol {
+        margin: 0 0 20px 0 !important;
+        padding-left: 20px !important;
+        color: rgba(255,255,255,0.9) !important;
+      }
+      
+      .youtube-ai-panel .instructions li {
+        margin-bottom: 8px !important;
+        line-height: 1.4 !important;
+      }
+      
+      .youtube-ai-panel .instructions strong {
+        color: #4facfe !important;
+      }
+      
+      .youtube-ai-panel .providers {
+        border-top: 1px solid rgba(255,255,255,0.2) !important;
+        padding-top: 16px !important;
+        margin-top: 16px !important;
+      }
+      
+      .youtube-ai-panel .providers p {
+        margin: 0 0 12px 0 !important;
+        font-weight: 600 !important;
+        text-align: center !important;
+      }
+      
+      .youtube-ai-panel .provider-list {
+        display: flex !important;
+        justify-content: space-around !important;
+        gap: 8px !important;
+      }
+      
+      .youtube-ai-panel .provider {
+        background: rgba(255,255,255,0.1) !important;
+        padding: 8px 12px !important;
+        border-radius: 16px !important;
+        font-size: 12px !important;
+        font-weight: 500 !important;
+        border: 1px solid rgba(255,255,255,0.2) !important;
+      }
     `;
     document.head.appendChild(style);
     
@@ -249,18 +313,10 @@ function handleButtonClick(event: Event) {
       panel!.style.right = '-420px';
     });
     
-    // Add save button handler
-    const saveButton = panel.querySelector('#save-api-key') as HTMLButtonElement;
-    saveButton?.addEventListener('click', () => {
-      const input = panel!.querySelector('#api-key-input') as HTMLInputElement;
-      const apiKey = input.value.trim();
-      if (apiKey) {
-        chrome.storage.local.set({ 'youtube-ai-api-key': apiKey }, () => {
-          console.log('API key saved!');
-          input.value = '';
-          checkAuthAndShowContent();
-        });
-      }
+    // Add refresh auth button handler
+    const refreshButton = panel.querySelector('#refresh-auth') as HTMLButtonElement;
+    refreshButton?.addEventListener('click', () => {
+      checkAuthAndShowContent();
     });
     
     // Add analyze video button handler
