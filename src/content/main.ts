@@ -220,7 +220,10 @@ function addButtonToContainer(container: Element, buttonClass: string): boolean 
   }
   
   const button = createButton(buttonClass);
-  (targetContainer as HTMLElement).style.position = 'relative';
+  const currentPos = window.getComputedStyle(targetContainer as Element).position;
+  if (currentPos === 'static') {
+    (targetContainer as HTMLElement).style.position = 'relative';
+  }
   targetContainer.appendChild(button);
   console.log('✅ Added button with YouTube ID:', youtubeId);
   return true;
