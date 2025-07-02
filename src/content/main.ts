@@ -7,10 +7,72 @@ function cleanupExistingOverlays() {
   console.log(`Cleaned up ${existingOverlays.length} existing overlays`);
 }
 
+// Extract YouTube video ID from container
+function extractYouTubeId(container: Element): string | null {
+  // Method 1: Look for video links with /watch?v= pattern
+  const videoLinks = container.querySelectorAll('a[href*="/watch?v="]');
+  if (videoLinks.length > 0) {
+    const href = videoLinks[0].getAttribute('href');
+    if (href) {
+      const match = href.match(/[?&]v=([^&]+)/);
+      if (match) return match[1];
+    }
+  }
+  
+  // Method 2: Look for thumbnail images with /vi/ pattern
+  const thumbnailImages = container.querySelectorAll('img[src*="/vi/"]');
+  if (thumbnailImages.length > 0) {
+    const src = thumbnailImages[0].getAttribute('src');
+    if (src) {
+      const match = src.match(/\/vi\/([^\/]+)/);
+      if (match) return match[1];
+    }
+  }
+  
+  // Method 3: Look for any element with data-context-item-id (sometimes used by YouTube)
+  const contextElements = container.querySelectorAll('[data-context-item-id]');
+  if (contextElements.length > 0) {
+    const contextId = contextElements[0].getAttribute('data-context-item-id');
+    if (contextId) return contextId;
+  }
+  
+  return null;
+}
+
 // Button click handler
 function handleButtonClick(event: Event) {
   event.preventDefault();
   event.stopPropagation();
+  
+  // Find the video container and extract YouTube ID
+  const button = event.target as HTMLButtonElement;
+  const videoContainerSelectors = [
+    'ytd-rich-grid-media',
+    'ytd-video-renderer', 
+    'ytd-compact-video-renderer',
+    'ytd-grid-video-renderer',
+    'ytd-playlist-video-renderer'
+  ];
+  
+  let videoContainer: Element | null = null;
+  for (const selector of videoContainerSelectors) {
+    videoContainer = button.closest(selector);
+    if (videoContainer) break;
+  }
+  
+  if (videoContainer) {
+    const youtubeId = extractYouTubeId(videoContainer);
+    if (youtubeId) {
+      console.log('🎥 YouTube Video ID:', youtubeId);
+      console.log('🔗 Full YouTube URL:', `https://www.youtube.com/watch?v=${youtubeId}`);
+    } else {
+      console.log('❌ Could not extract YouTube ID from container');
+      console.log('Container HTML:', videoContainer.outerHTML.substring(0, 500) + '...');
+    }
+  } else {
+    console.log('❌ Could not find video container');
+  }
+  
   console.log('Hello from metadata button!');
   
   const body = document.body;
@@ -118,32 +180,76 @@ function createButton(className: string): HTMLButtonElement {
   return button;
 }
 
-// Add button to a metadata container
+// Add button to a video container
 function addButtonToContainer(container: Element, buttonClass: string): boolean {
   if (container.querySelector(`.${buttonClass}`)) {
     return false; // Already has button
   }
   
-  // Find the outermost ytd-rich-grid-media container for consistent positioning
-  const richGridContainer = container.closest('ytd-rich-grid-media');
-  if (!richGridContainer) return false;
+  // Find the best video container for positioning
+  const videoContainers = [
+    'ytd-rich-grid-media',           // Grid view videos
+    'ytd-video-renderer',            // List view videos  
+    'ytd-compact-video-renderer',    // Sidebar videos
+    'ytd-grid-video-renderer',       // Channel grid videos
+    'ytd-playlist-video-renderer'    // Playlist videos
+  ];
   
-  // Check if we already added a button to this rich grid container
-  if (richGridContainer.querySelector(`.${buttonClass}`)) {
+  let targetContainer: Element | null = null;
+  
+  for (const containerType of videoContainers) {
+    targetContainer = container.closest(containerType);
+    if (targetContainer) break;
+  }
+  
+  if (!targetContainer) {
+    console.log('❌ Could not find suitable video container for button placement');
+    return false;
+  }
+  
+  // Check if we already added a button to this container
+  if (targetContainer.querySelector(`.${buttonClass}`)) {
+    return false;
+  }
+  
+  // Verify we can extract YouTube ID from this container before adding button
+  const youtubeId = extractYouTubeId(targetContainer);
+  if (!youtubeId) {
+    console.log('⚠️ Skipping container - no YouTube ID found:', targetContainer.tagName);
     return false;
   }
   
   const button = createButton(buttonClass);
-  (richGridContainer as HTMLElement).style.position = 'relative';
-  richGridContainer.appendChild(button);
+  (targetContainer as HTMLElement).style.position = 'relative';
+  targetContainer.appendChild(button);
+  console.log('✅ Added button with YouTube ID:', youtubeId);
   return true;
 }
 
 // Find and add buttons to metadata blocks
 function addMetadataButtons() {
   const selectors = [
-    'ytd-video-meta-block.grid #metadata', // Primary approach
-    'ytd-rich-grid-media ytd-video-meta-block #metadata' // Fallback approach
+    // Grid view videos
+    'ytd-video-meta-block.grid #metadata',
+    'ytd-rich-grid-media ytd-video-meta-block #metadata',
+    
+    // List view videos  
+    'ytd-video-renderer ytd-video-meta-block #metadata',
+    
+    // Compact videos (sidebar)
+    'ytd-compact-video-renderer #metadata',
+    
+    // Channel grid videos
+    'ytd-grid-video-renderer #metadata',
+    
+    // Playlist videos
+    'ytd-playlist-video-renderer #metadata',
+    
+    // Search results
+    'ytd-video-renderer #meta #metadata',
+    
+    // Generic fallback
+    '[class*="video"] ytd-video-meta-block #metadata'
   ];
   
   let buttonsAdded = 0;
