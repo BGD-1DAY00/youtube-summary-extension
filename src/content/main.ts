@@ -398,6 +398,13 @@ function handleButtonClick(event: Event) {
             <div class="video-icon">📹</div>
             <p>Ready to analyze video</p>
           </div>
+          <div class="chat-container" id="chat-container" style="display: none;">
+            <div class="messages" id="messages"></div>
+            <div class="input-area">
+              <input type="text" id="user-input" placeholder="Ask about this video..." />
+              <button id="send-message" class="primary-button">Send</button>
+            </div>
+          </div>
           <button id="analyze-video" class="primary-button">Analyze Video</button>
         </div>
       </div>
@@ -606,58 +613,65 @@ function handleButtonClick(event: Event) {
         border: 1px solid rgba(255,255,255,0.2) !important;
       }
       
-      .youtube-ai-panel .analyzing-state,
-      .youtube-ai-panel .error-state,
-      .youtube-ai-panel .analysis-result {
-        text-align: center !important;
-      }
-      
-      .youtube-ai-panel .error-icon,
-      .youtube-ai-panel .result-icon {
-        font-size: 48px !important;
-        margin-bottom: 16px !important;
-      }
-      
-      .youtube-ai-panel .summary-section,
-      .youtube-ai-panel .keypoints-section {
+      .youtube-ai-panel .chat-container {
         background: rgba(255,255,255,0.05) !important;
-        border-radius: 8px !important;
+        border-radius: 12px !important;
         padding: 16px !important;
-        margin: 16px 0 !important;
-        text-align: left !important;
+        margin-bottom: 16px !important;
+        height: 300px !important;
+        display: flex !important;
+        flex-direction: column !important;
       }
       
-      .youtube-ai-panel .summary-section h4,
-      .youtube-ai-panel .keypoints-section h4 {
-        margin: 0 0 12px 0 !important;
-        font-size: 16px !important;
-        font-weight: 600 !important;
-        color: #4facfe !important;
+      .youtube-ai-panel .messages {
+        flex: 1 !important;
+        overflow-y: auto !important;
+        margin-bottom: 12px !important;
+        padding-right: 8px !important;
       }
       
-      .youtube-ai-panel .summary-text {
-        line-height: 1.6 !important;
-        color: rgba(255,255,255,0.9) !important;
+      .youtube-ai-panel .message {
+        margin-bottom: 12px !important;
+        padding: 10px 12px !important;
+        border-radius: 8px !important;
+        max-width: 85% !important;
+        word-wrap: break-word !important;
       }
       
-      .youtube-ai-panel .keypoints-list {
-        margin: 0 !important;
-        padding-left: 20px !important;
-        color: rgba(255,255,255,0.9) !important;
+      .youtube-ai-panel .message.user {
+        background: rgba(79, 172, 254, 0.3) !important;
+        margin-left: auto !important;
+        text-align: right !important;
       }
       
-      .youtube-ai-panel .keypoints-list li {
-        margin-bottom: 8px !important;
-        line-height: 1.4 !important;
+      .youtube-ai-panel .message.assistant {
+        background: rgba(255,255,255,0.1) !important;
+        margin-right: auto !important;
       }
       
-      .youtube-ai-panel .warning {
-        background: rgba(255, 193, 7, 0.1) !important;
-        border: 1px solid rgba(255, 193, 7, 0.3) !important;
-        border-radius: 6px !important;
-        padding: 8px 12px !important;
-        margin: 12px 0 !important;
-        color: #ffc107 !important;
+      .youtube-ai-panel .message.system {
+        background: rgba(255,255,255,0.05) !important;
+        font-style: italic !important;
+        font-size: 12px !important;
+        text-align: center !important;
+        margin: 0 auto !important;
+      }
+      
+      .youtube-ai-panel .input-area {
+        display: flex !important;
+        gap: 8px !important;
+      }
+      
+      .youtube-ai-panel .input-area input {
+        flex: 1 !important;
+        margin-bottom: 0 !important;
+      }
+      
+      .youtube-ai-panel .input-area button {
+        width: auto !important;
+        min-width: 60px !important;
+        padding: 12px 16px !important;
+
       }
     `;
     document.head.appendChild(style);
@@ -679,6 +693,7 @@ function handleButtonClick(event: Event) {
     // Add analyze video button handler
     const analyzeButton = panel.querySelector('#analyze-video') as HTMLButtonElement;
     analyzeButton?.addEventListener('click', async () => {
+
       const videoId = getVideoId();
       const videoTitle = getVideoTitle();
       console.log('Analyzing video:', videoId, videoTitle);
@@ -712,6 +727,7 @@ function handleButtonClick(event: Event) {
           showError(`Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       });
+
     });
     
     // Add function to display analysis results
@@ -917,8 +933,135 @@ setInterval(() => {
   }
 }, 1000);
 
+// AI functionality
+async function startVideoAnalysis(): Promise<void> {
+  try {
+    showLoadingMessage('Extracting video data...');
+    
+    // Extract video data
+    const videoData = await videoExtractor.extractFullVideoData();
+    if (!videoData || !videoData.id) {
+      showErrorMessage('Could not extract video information');
+      return;
+    }
+    
+    // Initialize conversation context
+    await aiContextManager.initializeConversation(
+      videoData.id,
+      videoData.title,
+      videoData.transcript
+    );
+    
+    // Show chat interface
+    showChatInterface();
+    
+    // Send initial analysis request
+    const initialPrompt = `Please provide a summary of this video. Include key points, main topics discussed, and any important insights.`;
+    await sendUserMessage(initialPrompt, false); // Don't display user message since it's automatic
+    
+  } catch (error) {
+    console.error('Error starting video analysis:', error);
+    showErrorMessage('Failed to analyze video. Please try again.');
+  }
+}
+
+async function sendUserMessage(message: string, displayUserMessage = true): Promise<void> {
+  try {
+    if (displayUserMessage) {
+      addMessageToChat('user', message);
+    }
+    
+    showLoadingMessage('AI is thinking...');
+    
+    // Get API configuration
+    const config = await getAIProviderConfig();
+    if (!config) {
+      showErrorMessage('API key not configured. Please set up your API key.');
+      return;
+    }
+    
+    // Send request to AI
+    const response = await aiContextManager.makeAIRequest(message, config);
+    
+    // Display response
+    clearLoadingMessage();
+    addMessageToChat('assistant', response);
+    
+  } catch (error) {
+    console.error('Error sending message:', error);
+    clearLoadingMessage();
+    showErrorMessage('Failed to get AI response. Please check your API key and try again.');
+  }
+}
+
+function showChatInterface(): void {
+  const videoInfo = document.querySelector('#main-content .video-info') as HTMLElement;
+  const chatContainer = document.querySelector('#chat-container') as HTMLElement;
+  const analyzeButton = document.querySelector('#analyze-video') as HTMLElement;
+  
+  if (videoInfo) videoInfo.style.display = 'none';
+  if (chatContainer) chatContainer.style.display = 'flex';
+  if (analyzeButton) analyzeButton.style.display = 'none';
+}
+
+function addMessageToChat(role: 'user' | 'assistant' | 'system', content: string): void {
+  const messagesContainer = document.querySelector('#messages');
+  if (!messagesContainer) return;
+  
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `message ${role}`;
+  messageDiv.textContent = content;
+  
+  messagesContainer.appendChild(messageDiv);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function showLoadingMessage(message: string): void {
+  clearLoadingMessage();
+  addMessageToChat('system', message);
+}
+
+function clearLoadingMessage(): void {
+  const messages = document.querySelectorAll('#messages .message.system');
+  const lastSystemMessage = messages[messages.length - 1];
+  if (lastSystemMessage && (
+    lastSystemMessage.textContent?.includes('thinking') ||
+    lastSystemMessage.textContent?.includes('Extracting') ||
+    lastSystemMessage.textContent?.includes('Loading')
+  )) {
+    lastSystemMessage.remove();
+  }
+}
+
+function showErrorMessage(message: string): void {
+  clearLoadingMessage();
+  addMessageToChat('system', `❌ ${message}`);
+}
+
+async function getAIProviderConfig(): Promise<AIProviderConfig | null> {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['youtube-ai-api-key', 'youtube-ai-provider', 'youtube-ai-model'], (result) => {
+      const apiKey = result['youtube-ai-api-key'];
+      const provider = result['youtube-ai-provider'] || 'openai';
+      const model = result['youtube-ai-model'];
+      
+      if (!apiKey) {
+        resolve(null);
+        return;
+      }
+      
+      resolve({
+        provider: provider as 'openai' | 'claude' | 'gemini',
+        apiKey,
+        model
+      });
+    });
+  });
+}
+
 // Manual functions for testing
 (window as any).cleanupOverlays = cleanupExistingOverlays;
 (window as any).refreshMetadataButtons = refreshMetadataButtons;
+(window as any).startVideoAnalysis = startVideoAnalysis;
 
 console.log('Metadata button overlay script ready!');
