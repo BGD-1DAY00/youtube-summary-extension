@@ -1,9 +1,126 @@
+import { GeminiAPIService } from './gemini-api';
+
 console.log('[CRXJS] YouTube metadata button overlay script loaded!');
 
 // Get video ID from current YouTube page
 function getVideoId(): string | null {
-  // TODO: Implement video ID extraction logic
-  return null;
+  // Check URL for video ID
+  const urlParams = new URLSearchParams(window.location.search);
+  const videoId = urlParams.get('v');
+  if (videoId) return videoId;
+
+  // Check if we're on a video page and extract from URL
+  const match = window.location.href.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+  return match ? match[1] : null;
+}
+
+// Get video title from the page
+function getVideoTitle(): string {
+  const titleElement = document.querySelector('h1.ytd-watch-metadata yt-formatted-string') || 
+                      document.querySelector('h1.ytd-video-primary-info-renderer');
+  return titleElement?.textContent?.trim() || 'Unknown Video';
+}
+
+// UI helper functions
+function showAnalyzing() {
+  const panel = document.getElementById('youtube-ai-panel');
+  if (!panel) return;
+  
+  const mainContent = panel.querySelector('#main-content') as HTMLElement;
+  if (!mainContent) return;
+  
+  mainContent.innerHTML = `
+    <div class="analyzing-state">
+      <div class="spinner"></div>
+      <h3>Analyzing Video...</h3>
+      <p>Please wait while we process the video with Gemini AI</p>
+    </div>
+  `;
+}
+
+function showError(message: string) {
+  const panel = document.getElementById('youtube-ai-panel');
+  if (!panel) return;
+  
+  const mainContent = panel.querySelector('#main-content') as HTMLElement;
+  if (!mainContent) return;
+  
+  mainContent.innerHTML = `
+    <div class="error-state">
+      <div class="error-icon">⚠️</div>
+      <h3>Analysis Failed</h3>
+      <p>${message}</p>
+      <button id="retry-analysis" class="primary-button">Try Again</button>
+    </div>
+  `;
+  
+  // Add retry handler
+  const retryButton = mainContent.querySelector('#retry-analysis') as HTMLButtonElement;
+  retryButton?.addEventListener('click', () => {
+    // Reset to initial state
+    mainContent.innerHTML = `
+      <div class="video-info">
+        <div class="video-icon">📹</div>
+        <p>Ready to analyze video</p>
+      </div>
+      <button id="analyze-video" class="primary-button">Analyze Video</button>
+    `;
+    
+    // Re-add the analyze button handler
+    const analyzeButton = mainContent.querySelector('#analyze-video') as HTMLButtonElement;
+    if (analyzeButton) {
+      // Get the original click handler from the parent function
+      analyzeButton.click();
+    }
+  });
+}
+
+function showAnalysisResult(analysis: { summary: string; keyPoints: string[]; error?: string }) {
+  const panel = document.getElementById('youtube-ai-panel');
+  if (!panel) return;
+  
+  const mainContent = panel.querySelector('#main-content') as HTMLElement;
+  if (!mainContent) return;
+  
+  const keyPointsHtml = analysis.keyPoints.length > 0 
+    ? analysis.keyPoints.map(point => `<li>${point}</li>`).join('')
+    : '<li>No key points extracted</li>';
+  
+  mainContent.innerHTML = `
+    <div class="analysis-result">
+      <div class="result-icon">✨</div>
+      <h3>Analysis Complete</h3>
+      
+      <div class="summary-section">
+        <h4>Summary</h4>
+        <p class="summary-text">${analysis.summary}</p>
+      </div>
+      
+      <div class="keypoints-section">
+        <h4>Key Points</h4>
+        <ul class="keypoints-list">
+          ${keyPointsHtml}
+        </ul>
+      </div>
+      
+      ${analysis.error ? `<div class="warning"><small>⚠️ ${analysis.error}</small></div>` : ''}
+      
+      <button id="analyze-again" class="primary-button">Analyze Another Video</button>
+    </div>
+  `;
+  
+  // Add analyze again handler
+  const analyzeAgainButton = mainContent.querySelector('#analyze-again') as HTMLButtonElement;
+  analyzeAgainButton?.addEventListener('click', () => {
+    // Reset to initial state
+    mainContent.innerHTML = `
+      <div class="video-info">
+        <div class="video-icon">📹</div>
+        <p>Ready to analyze video</p>
+      </div>
+      <button id="analyze-video" class="primary-button">Analyze Video</button>
+    `;
+  });
 }
 
 // Check authentication and show appropriate content
@@ -51,7 +168,6 @@ function handleButtonClick(event: Event) {
   event.stopPropagation();
   console.log('Hello from metadata button!');
   
-  const body = document.body;
   let panel = document.getElementById('youtube-ai-panel');
   
   if (!panel) {
@@ -302,6 +418,60 @@ function handleButtonClick(event: Event) {
         font-weight: 500 !important;
         border: 1px solid rgba(255,255,255,0.2) !important;
       }
+      
+      .youtube-ai-panel .analyzing-state,
+      .youtube-ai-panel .error-state,
+      .youtube-ai-panel .analysis-result {
+        text-align: center !important;
+      }
+      
+      .youtube-ai-panel .error-icon,
+      .youtube-ai-panel .result-icon {
+        font-size: 48px !important;
+        margin-bottom: 16px !important;
+      }
+      
+      .youtube-ai-panel .summary-section,
+      .youtube-ai-panel .keypoints-section {
+        background: rgba(255,255,255,0.05) !important;
+        border-radius: 8px !important;
+        padding: 16px !important;
+        margin: 16px 0 !important;
+        text-align: left !important;
+      }
+      
+      .youtube-ai-panel .summary-section h4,
+      .youtube-ai-panel .keypoints-section h4 {
+        margin: 0 0 12px 0 !important;
+        font-size: 16px !important;
+        font-weight: 600 !important;
+        color: #4facfe !important;
+      }
+      
+      .youtube-ai-panel .summary-text {
+        line-height: 1.6 !important;
+        color: rgba(255,255,255,0.9) !important;
+      }
+      
+      .youtube-ai-panel .keypoints-list {
+        margin: 0 !important;
+        padding-left: 20px !important;
+        color: rgba(255,255,255,0.9) !important;
+      }
+      
+      .youtube-ai-panel .keypoints-list li {
+        margin-bottom: 8px !important;
+        line-height: 1.4 !important;
+      }
+      
+      .youtube-ai-panel .warning {
+        background: rgba(255, 193, 7, 0.1) !important;
+        border: 1px solid rgba(255, 193, 7, 0.3) !important;
+        border-radius: 6px !important;
+        padding: 8px 12px !important;
+        margin: 12px 0 !important;
+        color: #ffc107 !important;
+      }
     `;
     document.head.appendChild(style);
     
@@ -321,9 +491,40 @@ function handleButtonClick(event: Event) {
     
     // Add analyze video button handler
     const analyzeButton = panel.querySelector('#analyze-video') as HTMLButtonElement;
-    analyzeButton?.addEventListener('click', () => {
+    analyzeButton?.addEventListener('click', async () => {
       const videoId = getVideoId();
-      console.log('Analyzing video:', videoId);
+      const videoTitle = getVideoTitle();
+      console.log('Analyzing video:', videoId, videoTitle);
+      
+      if (!videoId) {
+        showError('Could not extract video ID from the current page');
+        return;
+      }
+
+      // Get API key from storage
+      chrome.storage.local.get(['youtube-ai-api-key'], async (result) => {
+        const apiKey = result['youtube-ai-api-key'];
+        if (!apiKey) {
+          showError('API key not found. Please configure your API key first.');
+          return;
+        }
+
+        try {
+          showAnalyzing();
+          const geminiService = new GeminiAPIService(apiKey);
+          
+          // Get transcript (placeholder for now)
+          const transcript = await geminiService.getVideoTranscript(videoId);
+          
+          // Analyze with Gemini
+          const analysis = await geminiService.analyzeVideoTranscript(transcript, videoTitle);
+          
+          showAnalysisResult(analysis);
+        } catch (error) {
+          console.error('Analysis failed:', error);
+          showError(`Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      });
     });
   }
   
@@ -436,10 +637,10 @@ function refreshMetadataButtons() {
 refreshMetadataButtons();
 
 // Debounced observer for new content
-let observerTimeout: NodeJS.Timeout;
+let observerTimeout: number;
 const observer = new MutationObserver(() => {
   clearTimeout(observerTimeout);
-  observerTimeout = setTimeout(addMetadataButtons, 300);
+  observerTimeout = setTimeout(addMetadataButtons, 300) as unknown as number;
 });
 
 observer.observe(document.body, {
