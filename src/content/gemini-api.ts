@@ -14,36 +14,11 @@ interface VideoAnalysisResult {
   error?: string;
 }
 
-export class GeminiAPIService {
-  private apiKey: string;
-  private baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
-
-  constructor(apiKey: string) {
-    this.apiKey = apiKey;
-  }
-
-  async analyzeVideoTranscript(transcript: string, videoTitle: string): Promise<VideoAnalysisResult> {
-    try {
-      const prompt = `
-        Please analyze the following YouTube video transcript and provide:
-        1. A concise summary (2-3 sentences)
-        2. Key points or takeaways (3-5 bullet points)
-        
-        Video Title: ${videoTitle}
-        
-        Transcript: ${transcript}
-        
-        Please format your response as JSON with the following structure:
-        {
-          "summary": "Your summary here",
-          "keyPoints": ["Point 1", "Point 2", "Point 3"]
-        }
-      `;
-
-      const response = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
+      const response = await fetch(this.baseUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-goog-api-key': this.apiKey
         },
         body: JSON.stringify({
           contents: [{
