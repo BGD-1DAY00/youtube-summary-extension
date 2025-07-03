@@ -121,6 +121,97 @@ function showAnalysisResult(analysis: { summary: string; keyPoints: string[]; er
       <button id="analyze-video" class="primary-button">Analyze Video</button>
     `;
   });
+
+}
+
+// Claude API configuration
+interface ClaudeAPIRequest {
+  model: string;
+  max_tokens: number;
+  messages: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+  }>;
+}
+
+interface ClaudeAPIResponse {
+  content: Array<{
+    type: string;
+    text: string;
+  }>;
+  id: string;
+  model: string;
+  role: string;
+  stop_reason: string;
+  stop_sequence: null;
+  type: string;
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+  };
+}
+
+// Route requests to Claude API
+async function callClaudeAPI(prompt: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(['youtube-ai-api-key'], async (result) => {
+      const apiKey = result['youtube-ai-api-key'];
+      
+      if (!apiKey) {
+        reject(new Error('API key not found'));
+        return;
+      }
+
+      try {
+        const requestBody: ClaudeAPIRequest = {
+          model: 'claude-3.7-sonnet',
+          max_tokens: 1000,
+          messages: [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ]
+        };
+
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01'
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+          throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
+        }
+
+        const data: ClaudeAPIResponse = await response.json();
+        
+        if (data.content && data.content.length > 0) {
+          resolve(data.content[0].text);
+        } else {
+          reject(new Error('No content in Claude API response'));
+        }
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
+}
+
+// Analyze YouTube video using Claude API
+async function analyzeVideo(videoId: string): Promise<string> {
+  const prompt = `Please analyze this YouTube video (ID: ${videoId}) and provide a summary of its key points, main topics discussed, and any important insights. Focus on the most valuable information a viewer should know.`;
+  
+  try {
+    const analysis = await callClaudeAPI(prompt);
+    return analysis;
+  } catch (error) {
+    throw new Error(`Failed to analyze video: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
 // Check authentication and show appropriate content
@@ -162,10 +253,72 @@ function cleanupExistingOverlays() {
   console.log(`Cleaned up ${existingOverlays.length} existing overlays`);
 }
 
+// Extract YouTube video ID from container
+function extractYouTubeId(container: Element): string | null {
+  // Method 1: Look for video links with /watch?v= pattern
+  const videoLinks = container.querySelectorAll('a[href*="/watch?v="]');
+  if (videoLinks.length > 0) {
+    const href = videoLinks[0].getAttribute('href');
+    if (href) {
+      const match = href.match(/[?&]v=([^&]+)/);
+      if (match) return match[1];
+    }
+  }
+  
+  // Method 2: Look for thumbnail images with /vi/ pattern
+  const thumbnailImages = container.querySelectorAll('img[src*="/vi/"]');
+  if (thumbnailImages.length > 0) {
+    const src = thumbnailImages[0].getAttribute('src');
+    if (src) {
+      const match = src.match(/\/vi\/([^\/]+)/);
+      if (match) return match[1];
+    }
+  }
+  
+  // Method 3: Look for any element with data-context-item-id (sometimes used by YouTube)
+  const contextElements = container.querySelectorAll('[data-context-item-id]');
+  if (contextElements.length > 0) {
+    const contextId = contextElements[0].getAttribute('data-context-item-id');
+    if (contextId) return contextId;
+  }
+  
+  return null;
+}
+
 // Button click handler
 function handleButtonClick(event: Event) {
   event.preventDefault();
   event.stopPropagation();
+  
+  // Find the video container and extract YouTube ID
+  const button = event.target as HTMLButtonElement;
+  const videoContainerSelectors = [
+    'ytd-rich-grid-media',
+    'ytd-video-renderer', 
+    'ytd-compact-video-renderer',
+    'ytd-grid-video-renderer',
+    'ytd-playlist-video-renderer'
+  ];
+  
+  let videoContainer: Element | null = null;
+  for (const selector of videoContainerSelectors) {
+    videoContainer = button.closest(selector);
+    if (videoContainer) break;
+  }
+  
+  if (videoContainer) {
+    const youtubeId = extractYouTubeId(videoContainer);
+    if (youtubeId) {
+      console.log('🎥 YouTube Video ID:', youtubeId);
+      console.log('🔗 Full YouTube URL:', `https://www.youtube.com/watch?v=${youtubeId}`);
+    } else {
+      console.log('❌ Could not extract YouTube ID from container');
+      console.log('Container HTML:', videoContainer.outerHTML.substring(0, 500) + '...');
+    }
+  } else {
+    console.log('❌ Could not find video container');
+  }
+  
   console.log('Hello from metadata button!');
   
   let panel = document.getElementById('youtube-ai-panel');
@@ -526,6 +679,32 @@ function handleButtonClick(event: Event) {
         }
       });
     });
+    
+    // Add function to display analysis results
+    function showAnalysisResult(result: string) {
+      const mainContent = panel!.querySelector('#main-content') as HTMLElement;
+      let resultDiv = panel!.querySelector('#analysis-result') as HTMLElement;
+      
+      if (!resultDiv) {
+        resultDiv = document.createElement('div');
+        resultDiv.id = 'analysis-result';
+        resultDiv.style.cssText = `
+          background: rgba(255,255,255,0.1) !important;
+          border-radius: 8px !important;
+          padding: 16px !important;
+          margin-top: 16px !important;
+          max-height: 300px !important;
+          overflow-y: auto !important;
+          text-align: left !important;
+          line-height: 1.5 !important;
+          font-size: 14px !important;
+          white-space: pre-wrap !important;
+        `;
+        mainContent.appendChild(resultDiv);
+      }
+      
+      resultDiv.textContent = result;
+    }
   }
   
   // Check authentication and show appropriate content
@@ -585,32 +764,79 @@ function createButton(className: string): HTMLButtonElement {
   return button;
 }
 
-// Add button to a metadata container
+// Add button to a video container
 function addButtonToContainer(container: Element, buttonClass: string): boolean {
   if (container.querySelector(`.${buttonClass}`)) {
     return false; // Already has button
   }
   
-  // Find the outermost ytd-rich-grid-media container for consistent positioning
-  const richGridContainer = container.closest('ytd-rich-grid-media');
-  if (!richGridContainer) return false;
+  // Find the best video container for positioning
+  const videoContainers = [
+    'ytd-rich-grid-media',           // Grid view videos
+    'ytd-video-renderer',            // List view videos  
+    'ytd-compact-video-renderer',    // Sidebar videos
+    'ytd-grid-video-renderer',       // Channel grid videos
+    'ytd-playlist-video-renderer'    // Playlist videos
+  ];
   
-  // Check if we already added a button to this rich grid container
-  if (richGridContainer.querySelector(`.${buttonClass}`)) {
+  let targetContainer: Element | null = null;
+  
+  for (const containerType of videoContainers) {
+    targetContainer = container.closest(containerType);
+    if (targetContainer) break;
+  }
+  
+  if (!targetContainer) {
+    console.log('❌ Could not find suitable video container for button placement');
+    return false;
+  }
+  
+  // Check if we already added a button to this container
+  if (targetContainer.querySelector(`.${buttonClass}`)) {
+    return false;
+  }
+  
+  // Verify we can extract YouTube ID from this container before adding button
+  const youtubeId = extractYouTubeId(targetContainer);
+  if (!youtubeId) {
+    console.log('⚠️ Skipping container - no YouTube ID found:', targetContainer.tagName);
     return false;
   }
   
   const button = createButton(buttonClass);
-  (richGridContainer as HTMLElement).style.position = 'relative';
-  richGridContainer.appendChild(button);
+  const currentPos = window.getComputedStyle(targetContainer as Element).position;
+  if (currentPos === 'static') {
+    (targetContainer as HTMLElement).style.position = 'relative';
+  }
+  targetContainer.appendChild(button);
+  console.log('✅ Added button with YouTube ID:', youtubeId);
   return true;
 }
 
 // Find and add buttons to metadata blocks
 function addMetadataButtons() {
   const selectors = [
-    'ytd-video-meta-block.grid #metadata', // Primary approach
-    'ytd-rich-grid-media ytd-video-meta-block #metadata' // Fallback approach
+    // Grid view videos
+    'ytd-video-meta-block.grid #metadata',
+    'ytd-rich-grid-media ytd-video-meta-block #metadata',
+    
+    // List view videos  
+    'ytd-video-renderer ytd-video-meta-block #metadata',
+    
+    // Compact videos (sidebar)
+    'ytd-compact-video-renderer #metadata',
+    
+    // Channel grid videos
+    'ytd-grid-video-renderer #metadata',
+    
+    // Playlist videos
+    'ytd-playlist-video-renderer #metadata',
+    
+    // Search results
+    'ytd-video-renderer #meta #metadata',
+    
+    // Generic fallback
+    '[class*="video"] ytd-video-meta-block #metadata'
   ];
   
   let buttonsAdded = 0;
