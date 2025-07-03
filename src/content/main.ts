@@ -2,8 +2,112 @@ console.log('[CRXJS] YouTube metadata button overlay script loaded!');
 
 // Get video ID from current YouTube page
 function getVideoId(): string | null {
-  // TODO: Implement video ID extraction logic
+function getVideoId(): string | null {
+  const url = window.location.href;
+  // Handle various YouTube URL formats
+  const patterns = [
+    /[?&]v=([^&]+)/,                    // Standard: youtube.com/watch?v=VIDEO_ID
+    /youtube\.com\/shorts\/([^/?]+)/,  // Shorts: youtube.com/shorts/VIDEO_ID
+    /youtube\.com\/embed\/([^/?]+)/,   // Embed: youtube.com/embed/VIDEO_ID
+    /youtu\.be\/([^/?]+)/,             // Short: youtu.be/VIDEO_ID
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+
   return null;
+}
+
+// Claude API configuration
+interface ClaudeAPIRequest {
+  model: string;
+  max_tokens: number;
+  messages: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+  }>;
+}
+
+interface ClaudeAPIResponse {
+  content: Array<{
+    type: string;
+    text: string;
+  }>;
+  id: string;
+  model: string;
+  role: string;
+  stop_reason: string;
+  stop_sequence: null;
+  type: string;
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+  };
+}
+
+// Route requests to Claude API
+async function callClaudeAPI(prompt: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(['youtube-ai-api-key'], async (result) => {
+      const apiKey = result['youtube-ai-api-key'];
+      
+      if (!apiKey) {
+        reject(new Error('API key not found'));
+        return;
+      }
+
+      try {
+        const requestBody: ClaudeAPIRequest = {
+          model: 'claude-3.7-sonnet',
+          max_tokens: 1000,
+          messages: [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ]
+        };
+
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01'
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+          throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
+        }
+
+        const data: ClaudeAPIResponse = await response.json();
+        
+        if (data.content && data.content.length > 0) {
+          resolve(data.content[0].text);
+        } else {
+          reject(new Error('No content in Claude API response'));
+        }
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
+}
+
+// Analyze YouTube video using Claude API
+async function analyzeVideo(videoId: string): Promise<string> {
+  const prompt = `Please analyze this YouTube video (ID: ${videoId}) and provide a summary of its key points, main topics discussed, and any important insights. Focus on the most valuable information a viewer should know.`;
+  
+  try {
+    const analysis = await callClaudeAPI(prompt);
+    return analysis;
+  } catch (error) {
+    throw new Error(`Failed to analyze video: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
 // Check authentication and show appropriate content
@@ -383,10 +487,54 @@ function handleButtonClick(event: Event) {
     
     // Add analyze video button handler
     const analyzeButton = panel.querySelector('#analyze-video') as HTMLButtonElement;
-    analyzeButton?.addEventListener('click', () => {
+    analyzeButton?.addEventListener('click', async () => {
       const videoId = getVideoId();
-      console.log('Analyzing video:', videoId);
+      if (!videoId) {
+        showAnalysisResult('Error: Could not extract video ID from current page');
+        return;
+      }
+      
+      // Show loading state
+      analyzeButton.textContent = 'Analyzing...';
+      analyzeButton.disabled = true;
+      
+      try {
+        const analysis = await analyzeVideo(videoId);
+        showAnalysisResult(analysis);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        showAnalysisResult(`Error: ${errorMessage}`);
+      } finally {
+        analyzeButton.textContent = 'Analyze Video';
+        analyzeButton.disabled = false;
+      }
     });
+    
+    // Add function to display analysis results
+    function showAnalysisResult(result: string) {
+      const mainContent = panel!.querySelector('#main-content') as HTMLElement;
+      let resultDiv = panel!.querySelector('#analysis-result') as HTMLElement;
+      
+      if (!resultDiv) {
+        resultDiv = document.createElement('div');
+        resultDiv.id = 'analysis-result';
+        resultDiv.style.cssText = `
+          background: rgba(255,255,255,0.1) !important;
+          border-radius: 8px !important;
+          padding: 16px !important;
+          margin-top: 16px !important;
+          max-height: 300px !important;
+          overflow-y: auto !important;
+          text-align: left !important;
+          line-height: 1.5 !important;
+          font-size: 14px !important;
+          white-space: pre-wrap !important;
+        `;
+        mainContent.appendChild(resultDiv);
+      }
+      
+      resultDiv.textContent = result;
+    }
   }
   
   // Check authentication and show appropriate content
