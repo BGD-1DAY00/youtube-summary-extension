@@ -1,241 +1,187 @@
 import './style.css'
 
-interface AIProvider {
-  id: string
-  name: string
-  icon: string
-  color: string
-}
-
-const AI_PROVIDERS: AIProvider[] = [
-  { id: 'openai', name: 'OpenAI', icon: '🧠', color: '#10a37f' },
-  { id: 'claude', name: 'Claude', icon: '⚡', color: '#ff6b35' },
-  { id: 'gemini', name: 'Gemini', icon: '🤖', color: '#4285f4' }
-]
-
-class PopupApp {
-  private currentProvider: string = ''
-  private apiKey: string = ''
+class ExtensionHomePage {
+  private apiStatusIndicator!: HTMLElement;
+  private apiStatusText!: HTMLElement;
+  private apiForm!: HTMLElement;
+  private apiSuccess!: HTMLElement;
+  private providerSelect!: HTMLSelectElement;
+  private apiKeyInput!: HTMLInputElement;
+  private saveButton!: HTMLElement;
+  private changeButton!: HTMLElement;
 
   constructor() {
-    this.init()
+    this.initializeElements();
+    this.setupEventListeners();
+    this.checkAPIStatus();
   }
 
-  private async init() {
-    await this.loadStoredData()
-    this.render()
-    this.attachEventListeners()
+  private initializeElements() {
+    this.apiStatusIndicator = document.getElementById('status-indicator')!;
+    this.apiStatusText = document.getElementById('status-text')!;
+    this.apiForm = document.getElementById('api-form')!;
+    this.apiSuccess = document.getElementById('api-success')!;
+    this.providerSelect = document.getElementById('provider-select') as HTMLSelectElement;
+    this.apiKeyInput = document.getElementById('api-key-input') as HTMLInputElement;
+    this.saveButton = document.getElementById('save-api-key')!;
+    this.changeButton = document.getElementById('change-api-key')!;
   }
 
-  private async loadStoredData() {
-    try {
-      const result = await chrome.storage.local.get(['youtube-ai-provider', 'youtube-ai-api-key'])
-      this.currentProvider = result['youtube-ai-provider'] || ''
-      this.apiKey = result['youtube-ai-api-key'] || ''
-    } catch (error) {
-      console.error('Error loading stored data:', error)
-    }
-  }
-
-  private render() {
-    const app = document.querySelector('#app')!
+  private setupEventListeners() {
+    this.saveButton.addEventListener('click', () => this.saveAPIKey());
+    this.changeButton.addEventListener('click', () => this.showAPIForm());
     
-    app.innerHTML = `
-      <div class="popup-container">
-        <div class="header">
-          <h1 class="title">YouTube AI Assistant</h1>
-          <p class="subtitle">Configure your AI provider to get started</p>
-        </div>
-
-        <div class="status-indicator ${this.apiKey ? 'connected' : 'disconnected'}">
-          <div class="status-dot"></div>
-          <span class="status-text">${this.apiKey ? 'Connected' : 'Not configured'}</span>
-        </div>
-
-        <div class="provider-section">
-          <h2 class="section-title">Select AI Provider</h2>
-          <div class="provider-grid">
-            ${AI_PROVIDERS.map(provider => `
-              <div class="provider-card ${this.currentProvider === provider.id ? 'selected' : ''}" 
-                   data-provider="${provider.id}">
-                <div class="provider-icon" style="color: ${provider.color}">${provider.icon}</div>
-                <div class="provider-name">${provider.name}</div>
-                ${this.currentProvider === provider.id ? '<div class="selected-indicator">✓</div>' : ''}
-              </div>
-            `).join('')}
-          </div>
-        </div>
-
-        <div class="api-key-section">
-          <h2 class="section-title">API Key</h2>
-          <div class="input-group">
-            <input 
-              type="password" 
-              id="api-key-input" 
-              class="api-key-input"
-              placeholder="Enter your API key"
-              value="${this.apiKey}"
-            />
-            <button type="button" id="toggle-visibility" class="toggle-btn">👁️</button>
-          </div>
-          <p class="input-hint">Your API key is stored securely and only used for YouTube AI analysis</p>
-        </div>
-
-        <div class="actions">
-          <button type="button" id="save-btn" class="save-btn ${this.currentProvider && this.apiKey ? 'enabled' : 'disabled'}">
-            Save Configuration
-          </button>
-          <button type="button" id="test-btn" class="test-btn ${this.currentProvider && this.apiKey ? 'enabled' : 'disabled'}">
-            Test Connection
-          </button>
-        </div>
-
-        <div class="footer">
-          <p class="help-text">
-            Need help? Visit the 
-            <a href="#" id="help-link">documentation</a>
-            for API key setup instructions
-          </p>
-        </div>
-      </div>
-    `
-  }
-
-  private attachEventListeners() {
-    // Provider selection
-    document.querySelectorAll('.provider-card').forEach(card => {
-      card.addEventListener('click', (e) => {
-        const provider = (e.currentTarget as HTMLElement).dataset.provider!
-        this.selectProvider(provider)
-      })
-    })
-
-    // API key input
-    const apiKeyInput = document.getElementById('api-key-input') as HTMLInputElement
-    apiKeyInput.addEventListener('input', (e) => {
-      this.apiKey = (e.target as HTMLInputElement).value
-      this.updateButtonStates()
-    })
-
-    // Toggle password visibility
-    document.getElementById('toggle-visibility')?.addEventListener('click', () => {
-      this.togglePasswordVisibility()
-    })
-
-    // Save button
-    document.getElementById('save-btn')?.addEventListener('click', () => {
-      this.saveConfiguration()
-    })
-
-    // Test button
-    document.getElementById('test-btn')?.addEventListener('click', () => {
-      this.testConnection()
-    })
-
-    // Help link
+    // Footer links
     document.getElementById('help-link')?.addEventListener('click', (e) => {
-      e.preventDefault()
-      this.openHelpPage()
-    })
-  }
-
-  private selectProvider(providerId: string) {
-    this.currentProvider = providerId
-    this.render()
-    this.attachEventListeners()
-    this.updateButtonStates()
-  }
-
-  private togglePasswordVisibility() {
-    const input = document.getElementById('api-key-input') as HTMLInputElement
-    const button = document.getElementById('toggle-visibility')!
+      e.preventDefault();
+      this.showHelp();
+    });
     
-    if (input.type === 'password') {
-      input.type = 'text'
-      button.textContent = '🙈'
-    } else {
-      input.type = 'password'
-      button.textContent = '👁️'
+    document.getElementById('privacy-link')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.showPrivacy();
+    });
+    
+    document.getElementById('about-link')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.showAbout();
+    });
+  }
+
+  private async checkAPIStatus() {
+    try {
+      const result = await chrome.storage.local.get(['youtube-ai-api-key', 'youtube-ai-provider']);
+      
+      if (result['youtube-ai-api-key'] && result['youtube-ai-provider']) {
+        this.showAPISuccess(result['youtube-ai-provider']);
+      } else {
+        this.showAPIForm();
+      }
+    } catch (error) {
+      console.error('Error checking API status:', error);
+      this.showError('Failed to check API status');
     }
   }
 
-  private updateButtonStates() {
-    const saveBtn = document.getElementById('save-btn')!
-    const testBtn = document.getElementById('test-btn')!
-    const isEnabled = this.currentProvider && this.apiKey.trim()
+  private async saveAPIKey() {
+    const provider = this.providerSelect.value;
+    const apiKey = this.apiKeyInput.value.trim();
 
-    if (isEnabled) {
-      saveBtn.classList.add('enabled')
-      saveBtn.classList.remove('disabled')
-      testBtn.classList.add('enabled')
-      testBtn.classList.remove('disabled')
-    } else {
-      saveBtn.classList.add('disabled')
-      saveBtn.classList.remove('enabled')
-      testBtn.classList.add('disabled')
-      testBtn.classList.remove('enabled')
+    if (!provider) {
+      this.showError('Please select an AI provider');
+      return;
     }
-  }
 
-  private async saveConfiguration() {
-    if (!this.currentProvider || !this.apiKey.trim()) {
-      this.showNotification('Please select a provider and enter an API key', 'error')
-      return
+    if (!apiKey) {
+      this.showError('Please enter your API key');
+      return;
     }
 
     try {
       await chrome.storage.local.set({
-        'youtube-ai-provider': this.currentProvider,
-        'youtube-ai-api-key': this.apiKey.trim()
-      })
+        'youtube-ai-api-key': apiKey,
+        'youtube-ai-provider': provider
+      });
+
+      this.showAPISuccess(provider);
       
-      this.showNotification('Configuration saved successfully!', 'success')
-      this.render()
-      this.attachEventListeners()
+      // Clear the form
+      this.apiKeyInput.value = '';
+      this.providerSelect.value = '';
+      
     } catch (error) {
-      console.error('Error saving configuration:', error)
-      this.showNotification('Error saving configuration', 'error')
+      console.error('Error saving API key:', error);
+      this.showError('Failed to save API key');
     }
   }
 
-  private async testConnection() {
-    if (!this.currentProvider || !this.apiKey.trim()) {
-      this.showNotification('Please configure provider and API key first', 'error')
-      return
-    }
+  private showAPIForm() {
+    this.apiForm.style.display = 'flex';
+    this.apiSuccess.style.display = 'none';
+    this.updateStatus('warning', 'API key not configured');
+  }
 
-    this.showNotification('Testing connection...', 'info')
+  private showAPISuccess(provider: string) {
+    this.apiForm.style.display = 'none';
+    this.apiSuccess.style.display = 'block';
     
-    // Simulate API test (in real implementation, this would make an actual API call)
+    const providerNames: Record<string, string> = {
+      'openai': '🧠 OpenAI',
+      'claude': '⚡ Claude',
+      'gemini': '🤖 Gemini'
+    };
+    
+    this.updateStatus('success', `Connected to ${providerNames[provider] || provider}`);
+  }
+
+  private showError(message: string) {
+    this.updateStatus('error', message);
+    
+    // Clear error after 3 seconds
     setTimeout(() => {
-      this.showNotification('Connection test successful!', 'success')
-    }, 1500)
+      this.checkAPIStatus();
+    }, 3000);
   }
 
-  private openHelpPage() {
-    const providerUrls: Record<string, string> = {
-      openai: 'https://platform.openai.com/api-keys',
-      claude: 'https://console.anthropic.com/',
-      gemini: 'https://makersuite.google.com/app/apikey'
-    }
-
-    const url = this.currentProvider ? providerUrls[this.currentProvider] : 'https://docs.google.com'
-    chrome.tabs.create({ url })
+  private updateStatus(type: 'success' | 'warning' | 'error', message: string) {
+    this.apiStatusIndicator.className = `status-indicator ${type === 'success' ? 'connected' : type === 'error' ? 'error' : ''}`;
+    this.apiStatusText.textContent = message;
   }
 
-  private showNotification(message: string, type: 'success' | 'error' | 'info') {
-    // Remove existing notifications
-    document.querySelectorAll('.notification').forEach(n => n.remove())
+  private showHelp() {
+    alert(`YouTube AI Summarizer Help
 
-    const notification = document.createElement('div')
-    notification.className = `notification ${type}`
-    notification.textContent = message
+How to use:
+1. Configure your API key in this popup
+2. Visit any YouTube video page
+3. Look for the blue "Sum" button on video thumbnails
+4. Click the button to get an AI summary
 
-    document.querySelector('.popup-container')!.appendChild(notification)
+Supported providers:
+• OpenAI (GPT models)
+• Claude (Anthropic)
+• Gemini (Google)
 
-    setTimeout(() => notification.remove(), 3000)
+For issues, check the console logs or reinstall the extension.`);
+  }
+
+  private showPrivacy() {
+    alert(`Privacy Policy
+
+• Your API keys are stored locally on your device
+• No data is sent to our servers
+• Video analysis is done directly with your chosen AI provider
+• We don't collect or store your usage data
+• All communication is between you and the AI provider
+
+Your privacy is important to us.`);
+  }
+
+  private showAbout() {
+    alert(`YouTube AI Summarizer v1.0.0
+
+A Chrome extension that provides AI-powered summaries of YouTube videos.
+
+Features:
+• Quick video summaries
+• Multiple AI provider support
+• Clean, modern interface
+• Privacy-focused design
+
+Built with ❤️ for YouTube users who want to save time.`);
   }
 }
 
-// Initialize the popup app
-new PopupApp()
+// Initialize the extension home page when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+  new ExtensionHomePage();
+});
+
+// Also initialize immediately in case DOM is already loaded
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    new ExtensionHomePage();
+  });
+} else {
+  new ExtensionHomePage();
+}
