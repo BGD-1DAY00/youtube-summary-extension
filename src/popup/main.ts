@@ -6,13 +6,18 @@ function loadApiKeyStatus() {
     const statusElement = document.getElementById('api-status');
     const keyInput = document.getElementById('api-key-input') as HTMLInputElement;
     
+    if (!statusElement || !keyInput) {
+      console.error('Required DOM elements not found');
+      return;
+    }
+    
     if (result['youtube-ai-api-key']) {
-      statusElement!.textContent = '✅ API Key configured';
-      statusElement!.className = 'status-success';
+      statusElement.textContent = '✅ API Key configured';
+      statusElement.className = 'status status-success';
       keyInput.placeholder = 'API key is already set (hidden for security)';
     } else {
-      statusElement!.textContent = '❌ No API Key configured';
-      statusElement!.className = 'status-error';
+      statusElement.textContent = '❌ No API Key configured';
+      statusElement.className = 'status status-error';
       keyInput.placeholder = 'Enter your Gemini API key here';
     }
   });
