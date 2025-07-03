@@ -2,9 +2,22 @@ console.log('[CRXJS] YouTube metadata button overlay script loaded!');
 
 // Get video ID from current YouTube page
 function getVideoId(): string | null {
+function getVideoId(): string | null {
   const url = window.location.href;
-  const match = url.match(/[?&]v=([^&]+)/);
-  return match ? match[1] : null;
+  // Handle various YouTube URL formats
+  const patterns = [
+    /[?&]v=([^&]+)/,                    // Standard: youtube.com/watch?v=VIDEO_ID
+    /youtube\.com\/shorts\/([^/?]+)/,  // Shorts: youtube.com/shorts/VIDEO_ID
+    /youtube\.com\/embed\/([^/?]+)/,   // Embed: youtube.com/embed/VIDEO_ID
+    /youtu\.be\/([^/?]+)/,             // Short: youtu.be/VIDEO_ID
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+
+  return null;
 }
 
 // Claude API configuration
