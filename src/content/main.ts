@@ -47,7 +47,7 @@ async function callClaudeAPI(prompt: string): Promise<string> {
 
       try {
         const requestBody: ClaudeAPIRequest = {
-          model: 'claude-3-sonnet-20240229',
+          model: 'claude-3.7-sonnet',
           max_tokens: 1000,
           messages: [
             {
