@@ -2,6 +2,40 @@ import { GeminiAPIService } from './gemini-api';
 
 console.log('[CRXJS] YouTube metadata button overlay script loaded!');
 
+// OpenAI API call function
+async function callOpenAI(apiKey: string, prompt: string, model: string = 'gpt-3.5-turbo'): Promise<string> {
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 1000,
+        temperature: 0.7
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0]?.message?.content || 'No response received';
+  } catch (error) {
+    console.error('Error calling OpenAI API:', error);
+    throw error;
+  }
+}
+
 // Get video ID from current YouTube page
 function getVideoId(): string | null {
   // Check URL for video ID
