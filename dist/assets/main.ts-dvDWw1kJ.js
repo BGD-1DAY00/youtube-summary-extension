@@ -1,64 +1,4 @@
-console.log('[CRXJS] YouTube metadata button overlay script loaded!');
-
-// Get video ID from current YouTube page
-function getVideoId(): string | null {
-  // TODO: Implement video ID extraction logic
-  return null;
-}
-
-// Check authentication and show appropriate content
-function checkAuthAndShowContent() {
-  const panel = document.getElementById('youtube-ai-panel');
-  if (!panel) return;
-  
-  const loadingState = panel.querySelector('#loading-state') as HTMLElement;
-  const authRequired = panel.querySelector('#auth-required') as HTMLElement;
-  const mainContent = panel.querySelector('#main-content') as HTMLElement;
-  
-  // Show loading state
-  loadingState.style.display = 'block';
-  authRequired.style.display = 'none';
-  mainContent.style.display = 'none';
-  
-  // Check for stored API key
-  chrome.storage.local.get(['youtube-ai-api-key'], (result) => {
-    setTimeout(() => {
-      loadingState.style.display = 'none';
-      
-      if (result['youtube-ai-api-key']) {
-        // API key exists, show main content
-        mainContent.style.display = 'block';
-        console.log('User authenticated');
-      } else {
-        // No API key, show auth required
-        authRequired.style.display = 'block';
-        console.log('Authentication required');
-      }
-    }, 800);
-  });
-}
-
-// Clean up any existing overlays
-function cleanupExistingOverlays() {
-  const existingOverlays = document.querySelectorAll('.metadata-button, .grid-metadata-button');
-  existingOverlays.forEach(overlay => overlay.remove());
-  console.log(`Cleaned up ${existingOverlays.length} existing overlays`);
-}
-
-// Button click handler
-function handleButtonClick(event: Event) {
-  event.preventDefault();
-  event.stopPropagation();
-  console.log('Hello from metadata button!');
-  
-  let panel = document.getElementById('youtube-ai-panel');
-  
-  if (!panel) {
-    // Create panel if it doesn't exist
-    panel = document.createElement('div');
-    panel.id = 'youtube-ai-panel';
-    panel.className = 'youtube-ai-panel';
-    panel.innerHTML = `
+(function(){console.log("[CRXJS] YouTube metadata button overlay script loaded!");function b(){return null}function l(){const o=document.getElementById("youtube-ai-panel");if(!o)return;const t=o.querySelector("#loading-state"),e=o.querySelector("#auth-required"),n=o.querySelector("#main-content");t.style.display="block",e.style.display="none",n.style.display="none",chrome.storage.local.get(["youtube-ai-api-key"],i=>{setTimeout(()=>{t.style.display="none",i["youtube-ai-api-key"]?(n.style.display="block",console.log("User authenticated")):(e.style.display="block",console.log("Authentication required"))},800)})}function m(){const o=document.querySelectorAll(".metadata-button, .grid-metadata-button");o.forEach(t=>t.remove()),console.log(`Cleaned up ${o.length} existing overlays`)}function g(o){o.preventDefault(),o.stopPropagation(),console.log("Hello from metadata button!");let t=document.getElementById("youtube-ai-panel");if(!t){t=document.createElement("div"),t.id="youtube-ai-panel",t.className="youtube-ai-panel",t.innerHTML=`
       <div class="panel-header"> 
         <h2>🎬 YouTube AI Summarizer</h2>
         <button class="close-button" id="close-panel">×</button>
@@ -97,10 +37,7 @@ function handleButtonClick(event: Event) {
           <button id="analyze-video" class="primary-button">Analyze Video</button>
         </div>
       </div>
-    `;
-    
-    // Add panel styles
-    panel.style.cssText = `
+    `,t.style.cssText=`
       position: fixed !important;
       top: 0 !important;
       right: -420px !important;
@@ -116,11 +53,7 @@ function handleButtonClick(event: Event) {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
       color: white !important;
       overflow: hidden !important;
-    `;
-    
-    // Add enhanced styles for panel elements
-    const style = document.createElement('style');
-    style.textContent = `
+    `;const n=document.createElement("style");n.textContent=`
       .youtube-ai-panel .panel-header {
         background: rgba(255,255,255,0.1) !important;
         backdrop-filter: blur(10px) !important;
@@ -301,53 +234,12 @@ function handleButtonClick(event: Event) {
         font-weight: 500 !important;
         border: 1px solid rgba(255,255,255,0.2) !important;
       }
-    `;
-    document.head.appendChild(style);
-    
-    document.body.appendChild(panel);
-    
-    // Add close button handler
-    const closeButton = panel.querySelector('#close-panel') as HTMLButtonElement;
-    closeButton?.addEventListener('click', () => {
-      panel!.style.right = '-420px';
-    });
-    
-    // Add refresh auth button handler
-    const refreshButton = panel.querySelector('#refresh-auth') as HTMLButtonElement;
-    refreshButton?.addEventListener('click', () => {
-      checkAuthAndShowContent();
-    });
-    
-    // Add analyze video button handler
-    const analyzeButton = panel.querySelector('#analyze-video') as HTMLButtonElement;
-    analyzeButton?.addEventListener('click', () => {
-      const videoId = getVideoId();
-      console.log('Analyzing video:', videoId);
-    });
-  }
-  
-  // Check authentication and show appropriate content
-  checkAuthAndShowContent();
-  
-  // Toggle panel visibility
-  const isOpen = panel.style.right === '0px';
-  panel.style.right = isOpen ? '-420px' : '0px';
-}
-
-// Create and style a button
-function createButton(className: string): HTMLButtonElement {
-  const button = document.createElement('button');
-  button.innerHTML = `
+    `,document.head.appendChild(n),document.body.appendChild(t);const i=t.querySelector("#close-panel");i==null||i.addEventListener("click",()=>{t.style.right="-420px"});const a=t.querySelector("#refresh-auth");a==null||a.addEventListener("click",()=>{l()});const r=t.querySelector("#analyze-video");r==null||r.addEventListener("click",()=>{const c=b();console.log("Analyzing video:",c)})}l();const e=t.style.right==="0px";t.style.right=e?"-420px":"0px"}function y(o){const t=document.createElement("button");return t.innerHTML=`
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right: 6px; vertical-align: middle;">
       <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" fill="currentColor"/>
     </svg>
     <span style="vertical-align: middle;">Sum</span>
-  `;
-  button.className = className;
-  button.type = 'button';
-  button.addEventListener('click', handleButtonClick);
-  
-  button.style.cssText = `
+  `,t.className=o,t.type="button",t.addEventListener("click",g),t.style.cssText=`
     position: absolute !important;
     bottom: 0 !important;
     right: 0 !important;
@@ -370,93 +262,5 @@ function createButton(className: string): HTMLButtonElement {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-  `;
-  
-  // Add hover effects
-  button.addEventListener('mouseenter', () => {
-    button.style.background = 'rgba(0, 123, 255, 1) !important';
-  });
-  button.addEventListener('mouseleave', () => {
-    button.style.background = 'rgba(0, 123, 255, 0.9) !important';
-  });
-  
-  return button;
-}
-
-// Add button to a metadata container
-function addButtonToContainer(container: Element, buttonClass: string): boolean {
-  if (container.querySelector(`.${buttonClass}`)) {
-    return false; // Already has button
-  }
-  
-  // Find the outermost ytd-rich-grid-media container for consistent positioning
-  const richGridContainer = container.closest('ytd-rich-grid-media');
-  if (!richGridContainer) return false;
-  
-  // Check if we already added a button to this rich grid container
-  if (richGridContainer.querySelector(`.${buttonClass}`)) {
-    return false;
-  }
-  
-  const button = createButton(buttonClass);
-  (richGridContainer as HTMLElement).style.position = 'relative';
-  richGridContainer.appendChild(button);
-  return true;
-}
-
-// Find and add buttons to metadata blocks
-function addMetadataButtons() {
-  const selectors = [
-    'ytd-video-meta-block.grid #metadata', // Primary approach
-    'ytd-rich-grid-media ytd-video-meta-block #metadata' // Fallback approach
-  ];
-  
-  let buttonsAdded = 0;
-  
-  selectors.forEach(selector => {
-    const containers = document.querySelectorAll(selector);
-    containers.forEach(container => {
-      if (addButtonToContainer(container, 'metadata-button')) {
-        buttonsAdded++;
-      }
-    });
-  });
-  
-  console.log(`Added ${buttonsAdded} metadata buttons`);
-}
-
-// Main refresh function
-function refreshMetadataButtons() {
-  cleanupExistingOverlays();
-  setTimeout(addMetadataButtons, 100);
-}
-
-// Initial run
-refreshMetadataButtons();
-
-// Debounced observer for new content
-let observerTimeout: number;
-const observer = new MutationObserver(() => {
-  clearTimeout(observerTimeout);
-  observerTimeout = setTimeout(addMetadataButtons, 300);
-});
-
-observer.observe(document.body, {
-  childList: true,
-  subtree: true
-});
-
-// Handle YouTube navigation
-let currentUrl = location.href;
-setInterval(() => {
-  if (location.href !== currentUrl) {
-    currentUrl = location.href;
-    setTimeout(refreshMetadataButtons, 1500);
-  }
-}, 1000);
-
-// Manual functions for testing
-(window as any).cleanupOverlays = cleanupExistingOverlays;
-(window as any).refreshMetadataButtons = refreshMetadataButtons;
-
-console.log('Metadata button overlay script ready!');
+  `,t.addEventListener("mouseenter",()=>{t.style.background="rgba(0, 123, 255, 1) !important"}),t.addEventListener("mouseleave",()=>{t.style.background="rgba(0, 123, 255, 0.9) !important"}),t}function h(o,t){if(o.querySelector(`.${t}`))return!1;const e=o.closest("ytd-rich-grid-media");if(!e||e.querySelector(`.${t}`))return!1;const n=y(t);return e.style.position="relative",e.appendChild(n),!0}function u(){const o=["ytd-video-meta-block.grid #metadata","ytd-rich-grid-media ytd-video-meta-block #metadata"];let t=0;o.forEach(e=>{document.querySelectorAll(e).forEach(i=>{h(i,"metadata-button")&&t++})}),console.log(`Added ${t} metadata buttons`)}function p(){m(),setTimeout(u,100)}p();let s;const x=new MutationObserver(()=>{clearTimeout(s),s=setTimeout(u,300)});x.observe(document.body,{childList:!0,subtree:!0});let d=location.href;setInterval(()=>{location.href!==d&&(d=location.href,setTimeout(p,1500))},1e3);window.cleanupOverlays=m;window.refreshMetadataButtons=p;console.log("Metadata button overlay script ready!");
+})()

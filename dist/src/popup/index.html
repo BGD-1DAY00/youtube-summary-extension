@@ -1,12 +1,111 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
-    <title>Vite Dev Mode</title>
-    <script src="/assets/loading-page-1924caaa.js" type="module"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YouTube AI Summarizer</title>
+    <script type="module" crossorigin src="/assets/index.html-avuGVVL5.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-D2L572IU.css">
   </head>
-  <body
-    style="font-family: Arial, sans-serif; padding: 20px; text-align: center"
-  >
-    <h1>Vite Dev Mode</h1>
+  <body>
+    <div id="app">
+      <div class="header">
+        <div class="logo">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 3h18v18H3V3zm2 2v14h14V5H5zm2 2h10v2H7V7zm0 4h10v2H7v-2zm0 4h6v2H7v-2z" fill="currentColor"/>
+          </svg>
+          <h1>YouTube AI Summarizer</h1>
+        </div>
+        <div class="version">v1.0.0</div>
+      </div>
+      
+      <div class="content">
+        <div class="welcome-section">
+          <div class="welcome-icon">🎬</div>
+          <h2>Welcome!</h2>
+          <p>Get AI-powered summaries of YouTube videos instantly.</p>
+        </div>
+        
+        <div class="features-section">
+          <h3>Features</h3>
+          <div class="feature-list">
+            <div class="feature-item">
+              <span class="feature-icon">⚡</span>
+              <span>Quick summaries on any YouTube video</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon">🤖</span>
+              <span>Multiple AI providers supported</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon">🎯</span>
+              <span>One-click analysis button</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="api-section">
+          <h3>API Configuration</h3>
+          <div class="api-status" id="api-status">
+            <div class="status-indicator" id="status-indicator"></div>
+            <span id="status-text">Checking API key...</span>
+          </div>
+          
+          <div class="api-form" id="api-form">
+            <select id="provider-select">
+              <option value="">Select AI Provider</option>
+              <option value="openai">🧠 OpenAI</option>
+              <option value="claude">⚡ Claude</option>
+              <option value="gemini">🤖 Gemini</option>
+            </select>
+            
+            <input type="password" id="api-key-input" placeholder="Enter your API key..." />
+            
+            <button id="save-api-key" class="primary-button">Save API Key</button>
+          </div>
+          
+          <div class="api-success" id="api-success" style="display: none;">
+            <div class="success-icon">✅</div>
+            <p>API key configured successfully!</p>
+            <button id="change-api-key" class="secondary-button">Change API Key</button>
+          </div>
+        </div>
+        
+        <div class="usage-section">
+          <h3>How to Use</h3>
+          <div class="steps">
+            <div class="step">
+              <div class="step-number">1</div>
+              <div class="step-content">
+                <strong>Configure API</strong>
+                <p>Enter your API key above to get started</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-number">2</div>
+              <div class="step-content">
+                <strong>Visit YouTube</strong>
+                <p>Go to any YouTube video page</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-number">3</div>
+              <div class="step-content">
+                <strong>Click "Sum" Button</strong>
+                <p>Look for the blue "Sum" button on video thumbnails</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="footer">
+          <div class="links">
+            <a href="#" id="help-link">Help</a>
+            <a href="#" id="privacy-link">Privacy</a>
+            <a href="#" id="about-link">About</a>
+          </div>
+        </div>
+      </div>
+    </div>
   </body>
 </html>
