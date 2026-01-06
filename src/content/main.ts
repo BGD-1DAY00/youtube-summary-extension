@@ -1,4 +1,4 @@
-import { GeminiAPIService } from './gemini-api';
+// import { GeminiAPIService } from './gemini-api';
 
 console.log('[CRXJS] YouTube metadata button overlay script loaded!');
 
